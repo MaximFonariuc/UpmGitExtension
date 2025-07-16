@@ -135,13 +135,13 @@ namespace Coffee.UpmGitExtension
 
                 _targetVersion = null;
                 var packageVersion = GitPackageDatabase.GetAvailablePackageVersions()
-                    .FirstOrDefault(v => v.packageInfo.packageId == packageInfo.packageId);
+                    .FirstOrDefault(v => v.PackageInfo.packageId == packageInfo.packageId);
                 if (packageVersion != null)
                 {
-                    var package = GitPackageDatabase.GetPackage(packageVersion);
+                    var package = GitPackageDatabase.GetPackage(packageVersion.Version);
                     _targetVersion = package?.versions?.installed?.uniqueId == packageInfo.packageId
                         ? package.versions.recommended
-                        : packageVersion;
+                        : packageVersion.Version;
                 }
                 else
                 {
@@ -236,7 +236,7 @@ namespace Coffee.UpmGitExtension
                 .Select(item => new
                 {
                     label = item.Q<Toggle>("versionHistoryItemToggle")?.Q<Label>(),
-                    version = item.version as UpmPackageVersionEx
+                    version = item.version as UpmPackageVersionWrapper
                 });
 #else
             var items = _root.Query<PackageVersionItem>().Build().ToList()

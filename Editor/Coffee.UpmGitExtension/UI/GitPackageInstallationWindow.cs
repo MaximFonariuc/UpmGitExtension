@@ -191,8 +191,8 @@ namespace Coffee.UpmGitExtension
             var menu = new GenericMenu();
             GenericMenu.MenuFunction2 callback = v =>
             {
-                var version = v as UpmPackageVersionEx;
-                _currentVersion = version;
+                var version = v as UpmPackageVersionWrapper;
+                _currentVersion = version.Version;
                 _versionSelectButton.text = GetShortPackageId(version);
                 SetState(State.VersionSelected);
             };
@@ -229,13 +229,13 @@ namespace Coffee.UpmGitExtension
             return 0 < path.Length ? url + "?path=" + path : url;
         }
 
-        private static string GetShortPackageId(UpmPackageVersionEx self)
+        private static string GetShortPackageId(UpmPackageVersionWrapper self)
         {
             var semver = self.semVersion.ToString();
-            var revision = self.packageInfo.git.revision;
+            var revision = self.PackageInfo.git.revision;
             return revision.Contains(semver)
-                ? $"{self.name}/{semver}"
-                : $"{self.name}/{semver} ({revision})";
+                ? $"{self.Version.name}/{semver}"
+                : $"{self.Version.name}/{semver} ({revision})";
         }
 
         //################################

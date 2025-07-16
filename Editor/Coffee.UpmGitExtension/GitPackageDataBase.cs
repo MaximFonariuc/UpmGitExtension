@@ -26,7 +26,7 @@ namespace Coffee.UpmGitExtension
         public string id;
         public string url;
         public int hash;
-        public UpmPackageVersionEx[] versions;
+        public UpmPackageVersionWrapper[] versions;
 
         void ISerializationCallbackReceiver.OnBeforeSerialize()
         {
@@ -117,7 +117,12 @@ namespace Coffee.UpmGitExtension
         {
             IPackage package;
             IPackageVersion version;
-            _packageDatabase.GetPackageAndVersion(packageUniqueId, versionUniqueId, out package, out version);
+#if UNITY_6000_0_OR_NEWER
+            package = GetPackage(packageUniqueId);
+            version = package?.versions.FirstOrDefault((IPackageVersion v) => v.uniqueId == versionUniqueId);
+#else
+           _packageDatabase.GetPackageAndVersion(packageUniqueId, versionUniqueId, out package, out version);
+#endif
             return version;
         }
 
@@ -172,11 +177,13 @@ namespace Coffee.UpmGitExtension
             isPaused = false;
         }
 
-        public static IEnumerable<UpmPackageVersionEx> GetAvailablePackageVersions(string repoUrl = null)
+        public static IEnumerable<UpmPackageVersionWrapper> GetAvailablePackageVersions(string repoUrl = null)
         {
-            return _resultCaches
+            var result = _resultCaches
                 .SelectMany(r => r.versions)
-                .Where(v => v.isValid && (string.IsNullOrEmpty(repoUrl) || v.uniqueId.Contains(repoUrl)));
+                .Where(v => v.isValid && (string.IsNullOrEmpty(repoUrl) || v.Version.uniqueId.Contains(repoUrl)));
+
+            return result;
         }
 
         //################################
@@ -220,7 +227,7 @@ namespace Coffee.UpmGitExtension
             );
 
             var packages = GetAvailablePackageVersions()
-                .ToLookup(v => v.name)
+                .ToLookup(v => v.PackageInfo.name)
                 .Select(versions =>
                 {
                     var isInstalled = installedIds.Contains(versions.Key);
@@ -237,13 +244,8 @@ namespace Coffee.UpmGitExtension
 
                         // Unlock.
                         installedVersion.UnlockVersion();
-
-                        var newVersions = new[] { new UpmPackageVersionEx(installedVersion) }
-                            .Concat(versions.Where(v => v.uniqueId != installedVersion.uniqueId))
-                            .OrderBy(v => v.semVersion)
-                            .ThenBy(v => v.isInstalled)
-                            .ToArray();
-                        upmPackage = upmPackage.UpdateVersionsSafety(newVersions);
+                        
+                        upmPackage = upmPackage.UpdateVersionsSafety();
 
                         return upmPackage;
                     }

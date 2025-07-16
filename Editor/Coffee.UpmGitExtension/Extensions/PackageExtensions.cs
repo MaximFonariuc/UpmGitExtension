@@ -26,17 +26,26 @@ namespace Coffee.UpmGitExtension
     {
         public static PackageInfo GetPackageInfo(this IPackageVersion self)
         {
-            return self is UpmPackageVersionEx ex
-                ? ex.packageInfo
+            return self is UpmPackageVersionWrapper ex
+                ? ex.PackageInfo
                 : PackageInfo.FindForAssetPath($"Packages/{self.name}");
         }
     }
 
     internal static class UpmPackageExtensions
     {
-        public static UpmPackage UpdateVersionsSafety(this UpmPackage self, IEnumerable<UpmPackageVersion> versions)
+        public static UpmPackage UpdateVersionsSafety(this UpmPackage self)
         {
-#if UNITY_2023_1_OR_NEWER
+#if UNITY_6000_0_OR_NEWER
+            var factory = UnityEditor.ScriptableSingleton<ServicesContainer>.instance.Resolve<UpmPackageFactory>();
+            var cache = factory.Get("m_UpmCache") as IUpmCache;
+            var packageName = self.name;
+
+            var data = cache.GetPackageData(packageName);
+            UpmVersionList upmVersionList = new UpmVersionList(data,(PackageTag)self.Get("m_Tag"));
+
+            self = factory.CreatePackage(self.name, upmVersionList);
+#elif UNITY_2023_1_OR_NEWER
             var factory = UnityEditor.ScriptableSingleton<ServicesContainer>.instance.Resolve<UpmPackageFactory>();
             self = factory.CreatePackage(self.name, new UpmVersionList(versions.OrderBy(v => v.version)));
 #elif UNITY_2022_2_OR_NEWER || UNITY_2021_3_26_OR_NEWER
@@ -126,7 +135,11 @@ namespace Coffee.UpmGitExtension
 
         public static void UnlockVersion(this UpmPackageVersion self)
         {
+#if UNITY_6000_0_OR_NEWER
+            var tag = (PackageTag)self.Get("m_Tag");
+#else
             var tag = (PackageTag)self.Get("m_Tag") & ~PackageTag.VersionLocked;
+#endif
             self.Set("m_Tag", tag);
         }
 
