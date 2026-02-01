@@ -20,8 +20,23 @@ using UpmPackage = UnityEditor.PackageManager.UI.Internal.Package;
 
 namespace Coffee.UpmGitExtension
 {
+    internal sealed class GitUpmPackageVersion
+    {
+        public string NAME;
+        public string UNIQUE_ID;
+        public string VERSION;
+        public string GIT_HASH;
+        public string GIT_REVISION;
+
+#if UNITY_6000_0_OR_NEWER
+	public UpmPackageVersion UPM;
+#else
+        public UpmPackageVersionEx UPM;
+#endif
+    }
+
     [Serializable]
-    internal class FetchResult : ISerializationCallbackReceiver
+    internal sealed class FetchResultRaw
     {
         public string id;
         public string url;
@@ -30,8 +45,20 @@ namespace Coffee.UpmGitExtension
 #if UNITY_6000_0_OR_NEWER
         public UpmPackageVersion[] versions;
 #else
-        public UpmPackageVersionEx[] versions;
+	public UpmPackageVersionEx[] versions;
 #endif
+    }
+
+    
+    [Serializable]
+    internal class FetchResult : ISerializationCallbackReceiver
+    {
+        public string id;
+        public string url;
+        public int hash;
+
+        public GitUpmPackageVersion[] versions;
+
 
         void ISerializationCallbackReceiver.OnBeforeSerialize()
         {
@@ -130,11 +157,11 @@ namespace Coffee.UpmGitExtension
         }
 
 #if UNITY_6000_0_OR_NEWER
-        internal static List<UpmPackageVersion> GetPackageVersion(string packageName, string versionUniqueId)
+        internal static List<GitUpmPackageVersion> GetPackageVersion(string packageName, string versionUniqueId)
         {
             var result = _resultCaches
                 .SelectMany(r => r.versions)
-                .Where(v => v.name == packageName).ToList();
+                .Where(v => v.UPM.name == packageName).ToList();
 
             return result;
         }
@@ -200,11 +227,11 @@ namespace Coffee.UpmGitExtension
         }
 
 #if UNITY_6000_0_OR_NEWER
-        public static IEnumerable<UpmPackageVersion> GetAvailablePackageVersions(string repoUrl = null)
+        public static IEnumerable<GitUpmPackageVersion> GetAvailablePackageVersions(string repoUrl = null)
         {
             var result = _resultCaches
                 .SelectMany(r => r.versions)
-                .Where(v => string.IsNullOrEmpty(repoUrl) || v.uniqueId.Contains(repoUrl));
+                .Where(v => string.IsNullOrEmpty(repoUrl) || v.UPM.uniqueId.Contains(repoUrl));
 
             return result;
         }
@@ -231,7 +258,7 @@ namespace Coffee.UpmGitExtension
             );
 
             var packages = GetAvailablePackageVersions()
-                .ToLookup(v => v.name)
+                .ToLookup(v => v.UPM.name)
                 .Select(versions =>
                 {
                     var isInstalled = installedIds.Contains(versions.Key);
@@ -297,7 +324,32 @@ namespace Coffee.UpmGitExtension
             try
             {
                 var text = File.ReadAllText(file, Encoding.UTF8);
-                var result = JsonUtility.FromJson<FetchResult>(text);
+                var raw = JsonUtility.FromJson<FetchResultRaw>(text);
+
+                var versions = raw.versions
+                    .Select(v =>
+                    {
+                        var info = v.GetPackageInfo();
+                        return new GitUpmPackageVersion
+                        {
+                            NAME = v.name,
+                            UNIQUE_ID = v.uniqueId,
+                            VERSION = v.versionString,
+                            GIT_HASH = info?.git?.hash,
+                            GIT_REVISION = info?.git?.revision,
+                            UPM = v
+                        };
+                    })
+                    .Where(v => !string.IsNullOrEmpty(v.GIT_HASH))
+                    .ToArray();
+
+                var result = new FetchResult
+                {
+                    id = raw.id,
+                    url = raw.url,
+                    hash = raw.hash,
+                    versions = versions
+                };
 
                 _resultCaches.RemoveWhere(r => r.url == result.url);
                 _resultCaches.Add(result);
@@ -308,7 +360,7 @@ namespace Coffee.UpmGitExtension
                 Debug.LogException(e);
             }
         }
-
+        
         [InitializeOnLoadMethod]
         private static void WatchResultJson()
         {

@@ -220,12 +220,12 @@ namespace Coffee.UpmGitExtension
             var repoUrl = GetRepoUrl(_repoUrlText.value, _pathText.value);
             foreach (var version in GitPackageDatabase.GetAvailablePackageVersions(repoUrl)
 #if UNITY_6000_0_OR_NEWER
-                         .OrderByDescending(v => v.version))
+                         .OrderByDescending(v => v.UPM.version))
 #else
                          .OrderByDescending(v => v.semVersion))
 #endif
             {
-                var text = GitPackageDatabase.GetShortPackageId(version);
+                var text = GitPackageDatabase.GetShortPackageId(version.UPM);
                 menu.AddItem(new GUIContent(text), _versionSelectButton.text == text, callback, version);
             }
 

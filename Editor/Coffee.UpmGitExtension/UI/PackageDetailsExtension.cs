@@ -138,14 +138,14 @@ namespace Coffee.UpmGitExtension
 #if UNITY_6000_0_OR_NEWER
                 var packageVersion =
                     GitPackageDatabase.GetAvailablePackageVersions()
-                        .FirstOrDefault(v => v.GetPackageInfo()?.packageId == packageInfo?.packageId);
+                        .FirstOrDefault(v => v.UPM.GetPackageInfo()?.packageId == packageInfo?.packageId);
 #else
                 var packageVersion = GitPackageDatabase.GetAvailablePackageVersions()
                     .FirstOrDefault(v => v.packageInfo.packageId == packageInfo.packageId);
 #endif
 
                 var package = packageVersion != null
-                    ? GitPackageDatabase.GetPackage(packageVersion)
+                    ? GitPackageDatabase.GetPackage(packageVersion.UPM)
                     : GitPackageDatabase.GetPackage(packageInfo.name);
 
 #if UNITY_6000_0_OR_NEWER
@@ -305,10 +305,10 @@ namespace Coffee.UpmGitExtension
                 }
 
                 var latest = availableVersions
-                    .OrderByDescending(v => v.version)
+                    .OrderByDescending(v => v.UPM.version)
                     .FirstOrDefault();
 
-                if (latest != null && latest.version > installed.version)
+                if (latest != null && latest.UPM.version > installed.version)
                 {
                     var packageItem = scrollView.GetPackageItem(package.uniqueId);
                     if (packageItem == null)
@@ -328,7 +328,7 @@ namespace Coffee.UpmGitExtension
 
                     stateIcon.style.backgroundImage =
                         (StyleBackground)EditorGUIUtility.IconContent("Update-Available").image;
-                    stateIcon.tooltip = $"Update available: {installed.version} → {latest.version}";
+                    stateIcon.tooltip = $"Update available: {installed.version} → {latest.UPM.version}";
 
                     stateIcon.style.display = DisplayStyle.Flex;
                 }
@@ -342,7 +342,7 @@ namespace Coffee.UpmGitExtension
             var packageName = _targetVersion.name;
 
             var availableVersions = GitPackageDatabase.GetPackageVersion(packageName, _targetVersion.uniqueId)
-                .OrderByDescending(v => v.version)
+                .OrderByDescending(v => v.UPM.version)
                 .ToList();
 
             foreach (var version in availableVersions)
@@ -365,7 +365,7 @@ namespace Coffee.UpmGitExtension
                 expandIcon.style.color = Color.gray;
                 expandIcon.style.unityFontStyleAndWeight = FontStyle.Normal;
 
-                var shortVersion = GitPackageDatabase.GetShortVersion(version);
+                var shortVersion = GitPackageDatabase.GetShortVersion(version.UPM);
                 var versionLabel = new Label(shortVersion);
                 versionLabel.style.unityFontStyleAndWeight = FontStyle.Normal;
                 versionLabel.style.fontSize = 14;
@@ -396,13 +396,13 @@ namespace Coffee.UpmGitExtension
                 tagLabel.style.marginRight = 6;
 
                 var actionButton = new Button();
-                if (version.uniqueId == _targetVersion.uniqueId && version.version == _targetVersion.version)
+                if (version.UPM.uniqueId == _targetVersion.uniqueId && version.UPM.version == _targetVersion.version)
                 {
                     tagLabel.text = "Installed";
                     actionButton.text = "Remove";
                     actionButton.clicked += () =>
                     {
-                        RemovePackage(version.packageId);
+                        RemovePackage(version.UPM.packageId);
                         actionButton.SetEnabled(false);
                     };
                 }
@@ -411,7 +411,7 @@ namespace Coffee.UpmGitExtension
                     actionButton.text = "Update";
                     actionButton.clicked += () =>
                     {
-                        UpdatePackage(version.packageId);
+                        UpdatePackage(version.UPM.packageId);
                         actionButton.SetEnabled(false);
                     };
                 }
