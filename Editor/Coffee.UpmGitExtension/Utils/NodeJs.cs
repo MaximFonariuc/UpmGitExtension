@@ -43,7 +43,7 @@ namespace Coffee.UpmGitExtension
                 var exitCode = program._process.ExitCode;
                 if (exitCode != 0)
                 {
-                    Debug.LogError(program.GetAllOutput());
+                    Debug.LogWarning(program.GetAllOutput());
                 }
 
                 EditorApplication.delayCall += () => callback?.Invoke(exitCode);

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using Newtonsoft.Json.Linq;
 using UnityEditor;
 using UnityEditor.PackageManager;
 using UnityEditorInternal;
@@ -20,7 +21,7 @@ using UpmPackage = UnityEditor.PackageManager.UI.Internal.Package;
 
 namespace Coffee.UpmGitExtension
 {
-    internal sealed class GitUpmPackageVersion
+    public sealed class GitUpmPackageVersion
     {
         public string NAME;
         public string UNIQUE_ID;
@@ -29,9 +30,9 @@ namespace Coffee.UpmGitExtension
         public string GIT_REVISION;
 
 #if UNITY_6000_0_OR_NEWER
-	public UpmPackageVersion UPM;
+	    internal UpmPackageVersion UPM;
 #else
-        public UpmPackageVersionEx UPM;
+        internal UpmPackageVersionEx UPM;
 #endif
     }
 
@@ -86,7 +87,7 @@ namespace Coffee.UpmGitExtension
         }
     }
 
-    internal class GitPackageDatabase : ScriptableSingleton<GitPackageDatabase>
+    public class GitPackageDatabase : ScriptableSingleton<GitPackageDatabase>
     {
         private static string _workingDirectory => InternalEditorUtility.unityPreferencesFolder + "/GitPackageDatabase";
         private static string _serializeVersion => "2.0.2";
@@ -119,14 +120,14 @@ namespace Coffee.UpmGitExtension
             _upmClient.RemoveByName(packageName);
         }
 
-        public static IEnumerable<UpmPackage> GetUpmPackages()
+        internal static IEnumerable<UpmPackage> GetUpmPackages()
         {
             return _packageDatabase.allPackages
                 .OfType<UpmPackage>()
                 .Where(x => x.versions.primary.HasTag(PackageTag.Git));
         }
 
-        public static IEnumerable<UpmPackage> GetInstalledGitPackages()
+        internal static IEnumerable<UpmPackage> GetInstalledGitPackages()
         {
             return GetUpmPackages()
                 .Where(p => p.GetInstalledVersion()?.HasTag(PackageTag.Git) == true);
@@ -236,7 +237,7 @@ namespace Coffee.UpmGitExtension
             return result;
         }
 #else
-        public static IEnumerable<UpmPackageVersionEx> GetAvailablePackageVersions(string repoUrl = null)
+        internal static IEnumerable<UpmPackageVersionEx> GetAvailablePackageVersions(string repoUrl = null)
         {
             return _resultCaches.SelectMany(r => r.versions)
                 .Where(v => v.isValid && (string.IsNullOrEmpty(repoUrl) || v.uniqueId.Contains(repoUrl)));
@@ -325,22 +326,37 @@ namespace Coffee.UpmGitExtension
             {
                 var text = File.ReadAllText(file, Encoding.UTF8);
                 var raw = JsonUtility.FromJson<FetchResultRaw>(text);
+                if (raw == null || raw.versions == null)
+                {
+                    return;
+                }
+
+                var gitMap = ParseGitInfo(text);
 
                 var versions = raw.versions
                     .Select(v =>
                     {
-                        var info = v.GetPackageInfo();
+                        if (v == null || string.IsNullOrEmpty(v.uniqueId))
+                        {
+                            return null;
+                        }
+
+                        if (!gitMap.TryGetValue(v.uniqueId, out var git))
+                        {
+                            return null;
+                        }
+
                         return new GitUpmPackageVersion
                         {
                             NAME = v.name,
                             UNIQUE_ID = v.uniqueId,
                             VERSION = v.versionString,
-                            GIT_HASH = info?.git?.hash,
-                            GIT_REVISION = info?.git?.revision,
+                            GIT_HASH = git.hash,
+                            GIT_REVISION = git.revision,
                             UPM = v
                         };
                     })
-                    .Where(v => !string.IsNullOrEmpty(v.GIT_HASH))
+                    .Where(v => v != null && !string.IsNullOrEmpty(v.GIT_HASH))
                     .ToArray();
 
                 var result = new FetchResult
@@ -359,6 +375,50 @@ namespace Coffee.UpmGitExtension
             {
                 Debug.LogException(e);
             }
+        }
+        
+        private static Dictionary<string, (string hash, string revision)> ParseGitInfo(string json)
+        {
+            var map = new Dictionary<string, (string, string)>();
+
+            var root = JObject.Parse(json);
+            var versions = root["versions"] as JArray;
+            if (versions == null)
+            {
+                return map;
+            }
+
+            foreach (var v in versions)
+            {
+                var pkg = v["m_PackageInfo"];
+                if (pkg == null)
+                {
+                    continue;
+                }
+
+                var uniqueId = pkg["m_PackageId"]?.ToString();
+                if (string.IsNullOrEmpty(uniqueId))
+                {
+                    continue;
+                }
+
+                var git = pkg["m_Git"];
+                if (git == null)
+                {
+                    continue;
+                }
+
+                var hash = git["m_Hash"]?.ToString();
+                if (string.IsNullOrEmpty(hash))
+                {
+                    continue;
+                }
+
+                var revision = git["m_Revision"]?.ToString();
+                map[uniqueId] = (hash, revision);
+            }
+
+            return map;
         }
         
         [InitializeOnLoadMethod]
@@ -406,7 +466,7 @@ namespace Coffee.UpmGitExtension
 #endif
         }
 
-        public static string GetShortPackageId(UpmPackageVersion self)
+        internal static string GetShortPackageId(UpmPackageVersion self)
         {
             var semver = self.versionString;
             var revision = ExtractGitRevision(self.uniqueId);
@@ -416,7 +476,7 @@ namespace Coffee.UpmGitExtension
                 : $"{self.name}/{semver}";
         }
 
-        public static string GetShortVersion(UpmPackageVersion self)
+        internal static string GetShortVersion(UpmPackageVersion self)
         {
             var semver = self.versionString;
             var revision = ExtractGitRevision(self.uniqueId);
