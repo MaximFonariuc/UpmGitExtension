@@ -208,19 +208,19 @@ namespace Coffee.UpmGitExtension
             GenericMenu.MenuFunction2 callback = v =>
             {
 #if UNITY_6000_0_OR_NEWER
-                var version = v as UpmPackageVersion;
+                var version = v as GitUpmPackageVersion;
 #else
                 var version = v as UpmPackageVersionEx;
 #endif
-                _currentVersion = version;
-                _versionSelectButton.text = GitPackageDatabase.GetShortPackageId(version);
+                _currentVersion = version.UPM;
+                _versionSelectButton.text = GitPackageDatabase.GetShortPackageId(_currentVersion);
                 SetState(State.VersionSelected);
             };
 
             var repoUrl = GetRepoUrl(_repoUrlText.value, _pathText.value);
             foreach (var version in GitPackageDatabase.GetAvailablePackageVersions(repoUrl)
 #if UNITY_6000_0_OR_NEWER
-                         .OrderByDescending(v => v.UPM.version))
+                         .OrderByDescending(v => v.VERSION))
 #else
                          .OrderByDescending(v => v.semVersion))
 #endif

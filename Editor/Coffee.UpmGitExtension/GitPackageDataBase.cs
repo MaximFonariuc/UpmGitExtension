@@ -157,6 +157,15 @@ namespace Coffee.UpmGitExtension
             return _packageDatabase.GetPackage(packageName);
         }
 
+        public static GitUpmPackageVersion GetPackage(string packageName, string hash)
+        {
+            var result = _resultCaches
+                .SelectMany(r => r.versions)
+                .FirstOrDefault(v => v.NAME == packageName && v.GIT_HASH == hash);
+
+            return result;
+        }
+
 #if UNITY_6000_0_OR_NEWER
         internal static List<GitUpmPackageVersion> GetPackageVersion(string packageName, string versionUniqueId)
         {

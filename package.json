@@ -15,5 +15,6 @@
   ],
   "displayName": "UPM Git Extension",
   "unity": "2020.1",
-  "type": "tool"
+  "type": "tool",
+  "_fingerprint": "88c6627ebbf820fa1d43edb76dad056b3b532f8e"
 }
