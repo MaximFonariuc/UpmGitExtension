@@ -113,21 +113,58 @@ namespace Coffee.UpmGitExtension
             _upmClient.AddByUrl(packageId);
         }
 
-        public static void Install(string name, string hash = "")
+        public static void Install(string packageId, Action<bool> callback = null)
+        {
+            _upmClient.AddByUrl(packageId);
+
+            if (callback != null)
+            {
+                void OnAddOperation(IOperation op)
+                {
+                    op.onOperationSuccess += OnSuccess;
+                    op.onOperationError += OnError;
+                }
+
+                void OnSuccess(IOperation op)
+                {
+                    callback?.Invoke(true);
+                    Unsubscribe();
+                }
+
+                void OnError(IOperation op, UIError error)
+                {
+                    callback?.Invoke(false);
+                    Unsubscribe();
+                }
+
+                void Unsubscribe()
+                {
+                    if (_upmClient != null)
+                    {
+                        _upmClient.onAddOperation -= OnAddOperation;
+                    }
+                }
+
+                _upmClient.onAddOperation += OnAddOperation;
+            }
+        }
+
+        public static void Install(string name, string hash = "", Action<bool> callback = null)
         {
             UpmPackageVersion package = null;
-            
+    
             if (!string.IsNullOrEmpty(hash))
             {
-                package = GetPackage(name, hash).UPM;
-            } 
+                package = GetPackage(name, hash)?.UPM;
+            }
 
             if (package == null)
             {
+                callback?.Invoke(false);
                 return;
             }
 
-            Install(package.uniqueId);
+            Install(package.uniqueId, callback);
         }
 
         public static void Uninstall(string packageId)
