@@ -115,7 +115,6 @@ namespace Coffee.UpmGitExtension
 
         public static void Install(string packageId, Action<bool> callback = null)
         {
-            _upmClient.AddByUrl(packageId);
 
             if (callback != null)
             {
@@ -146,6 +145,7 @@ namespace Coffee.UpmGitExtension
                 }
 
                 _upmClient.onAddOperation += OnAddOperation;
+                _upmClient.AddByUrl(packageId);
             }
         }
 
