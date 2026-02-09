@@ -113,6 +113,23 @@ namespace Coffee.UpmGitExtension
             _upmClient.AddByUrl(packageId);
         }
 
+        public static void Install(string name, string hash = "")
+        {
+            UpmPackageVersion package = null;
+            
+            if (!string.IsNullOrEmpty(hash))
+            {
+                package = GetPackage(name, hash).UPM;
+            } 
+
+            if (package == null)
+            {
+                return;
+            }
+
+            Install(package.uniqueId);
+        }
+
         public static void Uninstall(string packageId)
         {
             var i = packageId.IndexOf('@');
@@ -162,6 +179,15 @@ namespace Coffee.UpmGitExtension
             var result = _resultCaches
                 .SelectMany(r => r.versions)
                 .FirstOrDefault(v => v.NAME == packageName && v.GIT_HASH == hash);
+
+            return result;
+        }
+
+        public static GitUpmPackageVersion GetPackageByVersion(string packageName, string version)
+        {
+            var result = _resultCaches
+                .SelectMany(r => r.versions)
+                .FirstOrDefault(v => v.NAME == packageName && v.VERSION == version);
 
             return result;
         }
