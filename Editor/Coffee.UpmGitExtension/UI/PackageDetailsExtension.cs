@@ -141,7 +141,7 @@ namespace Coffee.UpmGitExtension
                         .FirstOrDefault(v => v.UPM.GetPackageInfo()?.packageId == packageInfo?.packageId);
 #else
                 var packageVersion = GitPackageDatabase.GetAvailablePackageVersions()
-                    .FirstOrDefault(v => v.packageInfo.packageId == packageInfo.packageId);
+                    .FirstOrDefault(v => v.UPM.packageInfo.packageId == packageInfo.packageId);
 #endif
 
                 var package = packageVersion != null
@@ -155,7 +155,7 @@ namespace Coffee.UpmGitExtension
                 {
                     _targetVersion = package?.versions?.installed?.uniqueId == packageInfo.packageId
                         ? package.versions.recommended
-                        : packageVersion;
+                        : packageVersion.UPM;
                 }
                 else
                 {

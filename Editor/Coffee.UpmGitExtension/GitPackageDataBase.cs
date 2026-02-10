@@ -71,7 +71,7 @@ namespace Coffee.UpmGitExtension
             versions = versions.ToArray();
 #else
             versions = versions
-                .Where(v => v.isValid)
+                .Where(v => v.UPM.isValid)
                 .ToArray();
 #endif
         }
@@ -309,10 +309,10 @@ namespace Coffee.UpmGitExtension
             return result;
         }
 #else
-        internal static IEnumerable<UpmPackageVersionEx> GetAvailablePackageVersions(string repoUrl = null)
+        public static IEnumerable<GitUpmPackageVersion> GetAvailablePackageVersions(string repoUrl = null)
         {
             return _resultCaches.SelectMany(r => r.versions)
-                .Where(v => v.isValid && (string.IsNullOrEmpty(repoUrl) || v.uniqueId.Contains(repoUrl)));
+                .Where(v => v.UPM.isValid && (string.IsNullOrEmpty(repoUrl) || v.UPM.uniqueId.Contains(repoUrl)));
         }
 #endif
 
@@ -355,11 +355,18 @@ namespace Coffee.UpmGitExtension
 #if UNITY_6000_0_OR_NEWER
                     upmPackage = upmPackage.UpdateVersionsSafety();
 #else
-                    var newVersions = new[] { new UpmPackageVersionEx(installedVersion) }
-                        .Concat(versions.Where(v => v.uniqueId != installedVersion.uniqueId))
+                    var installedVersionEx = new[] { new UpmPackageVersionEx(installedVersion) };
+                    
+                    var availableVersionsEx = versions
+                        .Where(v => v.UPM.uniqueId != installedVersion.uniqueId)
+                        .Select(v => v.UPM);
+                    
+                    var newVersions = installedVersionEx
+                        .Concat(availableVersionsEx)
                         .OrderBy(v => v.semVersion)
                         .ThenBy(v => v.isInstalled)
                         .ToArray();
+                    
                     upmPackage = upmPackage.UpdateVersionsSafety(newVersions);
 #endif
 

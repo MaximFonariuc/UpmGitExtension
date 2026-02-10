@@ -209,10 +209,11 @@ namespace Coffee.UpmGitExtension
             {
 #if UNITY_6000_0_OR_NEWER
                 var version = v as GitUpmPackageVersion;
+                _currentVersion = version.UPM;
 #else
                 var version = v as UpmPackageVersionEx;
+                _currentVersion = version;
 #endif
-                _currentVersion = version.UPM;
                 _versionSelectButton.text = GitPackageDatabase.GetShortPackageId(_currentVersion);
                 SetState(State.VersionSelected);
             };
@@ -222,7 +223,7 @@ namespace Coffee.UpmGitExtension
 #if UNITY_6000_0_OR_NEWER
                          .OrderByDescending(v => v.VERSION))
 #else
-                         .OrderByDescending(v => v.semVersion))
+                         .OrderByDescending(v => v.UPM.semVersion))
 #endif
             {
                 var text = GitPackageDatabase.GetShortPackageId(version.UPM);
