@@ -207,13 +207,8 @@ namespace Coffee.UpmGitExtension
             var menu = new GenericMenu();
             GenericMenu.MenuFunction2 callback = v =>
             {
-#if UNITY_6000_0_OR_NEWER
                 var version = v as GitUpmPackageVersion;
                 _currentVersion = version.UPM;
-#else
-                var version = v as UpmPackageVersionEx;
-                _currentVersion = version;
-#endif
                 _versionSelectButton.text = GitPackageDatabase.GetShortPackageId(_currentVersion);
                 SetState(State.VersionSelected);
             };
